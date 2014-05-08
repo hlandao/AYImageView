@@ -7,7 +7,8 @@
 //
 
 #import "PAImageView.h"
-#import "AFNetworking/AFNetworking.h"
+#import "AFNetworking.h"
+//#import "AFNetworking/AFNetworking.h"
 
 #pragma mark - Utils
 
@@ -24,7 +25,10 @@ NSString * const spm_identifier = @"spm.imagecache.tg";
 @property (nonatomic, strong) NSFileManager *fileManager;
 
 - (void)setImage:(UIImage *)image forURL:(NSURL *)URL;
-- (UIImage *)getImageForURL:(NSURL *)URL;
+- (UIImage *)imageForURL:(NSURL *)URL;
+
+- (void)setImage:(UIImage *)image forKey:(NSString *)Key pathExtension:(NSString *)pathExtension;
+- (UIImage *)imageforKey:(NSString *)Key pathExtension:(NSString *)pathExtension;
 
 @end
 
@@ -164,10 +168,45 @@ NSString * const spm_identifier = @"spm.imagecache.tg";
     }
 }
 
+- (void)setImageURL:(NSURL *)URL cacheKey:(NSString *)key
+{
+    NSURLRequest *urlRequest = [NSURLRequest requestWithURL:URL];
+    NSString *fileExtension = [URL pathExtension];
+    UIImage *cachedImage = (self.cacheEnabled) ? [self.cache imageforKey:key
+                                                           pathExtension:fileExtension] : nil;
+    if(cachedImage)
+    {
+        [self updateWithImage:cachedImage animated:NO];
+    }
+    else
+    {
+        __weak __typeof(self)weakSelf = self;
+        AFHTTPRequestOperation *requestOperation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
+        requestOperation.responseSerializer = [AFImageResponseSerializer serializer];
+        [requestOperation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
+            CGFloat progress = (CGFloat)totalBytesRead/(CGFloat)totalBytesExpectedToRead;
+            
+            self.progressLayer.strokeEnd        = progress;
+            self.backgroundLayer.strokeStart    = progress;
+        }];
+        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
+            UIImage *image = responseObject;
+            [weakSelf updateWithImage:image animated:YES];
+            if(self.cacheEnabled)
+            {
+                [self.cache setImage:responseObject forKey:key pathExtension:fileExtension];
+            }
+        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+            NSLog(@"Image error: %@", error);
+        }];
+        [requestOperation start];
+    }
+}
+
 - (void)setImageURL:(NSURL *)URL
 {
     NSURLRequest *urlRequest = [NSURLRequest requestWithURL:URL];
-    UIImage *cachedImage = (self.cacheEnabled) ? [self.cache getImageForURL:URL] : nil;
+    UIImage *cachedImage = (self.cacheEnabled) ? [self.cache imageForURL:URL] : nil;
     if(cachedImage)
     {
         [self updateWithImage:cachedImage animated:NO];
@@ -255,28 +294,44 @@ NSString * const spm_identifier = @"spm.imagecache.tg";
 
 - (void)setImage:(UIImage *)image forURL:(NSURL *)URL
 {
+    NSString *fileExtension = [URL pathExtension];
+    NSString *key = [NSString stringWithFormat:@"%u", URL.hash];
     
+    [self setImage:image
+            forKey:key
+     pathExtension:fileExtension];
+}
+
+- (UIImage *)imageForURL:(NSURL *)URL
+{
+    NSString *fileExtension = [URL pathExtension];
+    NSString *key = [NSString stringWithFormat:@"%u", URL.hash];
+    
+    return [self imageforKey:key
+                  pathExtension:fileExtension];
+}
+
+- (void)setImage:(UIImage *)image forKey:(NSString *)Key pathExtension:(NSString *)pathExtension
+{
     NSData   *imageData = nil;
     
-    NSString *fileExtension = [URL pathExtension];//[[URL componentsSeparatedByString:@"."] lastObject];
-    if([fileExtension isEqualToString:@"png"])
+    if([pathExtension isEqualToString:@"png"])
     {
         imageData       = UIImagePNGRepresentation(image);
     }
-    else if([fileExtension isEqualToString:@"jpg"] || [fileExtension isEqualToString:@"jpeg"])
+    else if([pathExtension isEqualToString:@"jpg"] || [pathExtension isEqualToString:@"jpeg"])
     {
         imageData       = UIImageJPEGRepresentation(image, 1.f);
     }
     else
         return;
     
-    [imageData writeToFile:[self.cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%u.%@", URL.hash, fileExtension]] atomically:YES];
+    [imageData writeToFile:[self.cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", Key, pathExtension]] atomically:YES];
 }
 
-- (UIImage *)getImageForURL:(NSURL *)URL
+- (UIImage *)imageforKey:(NSString *)Key pathExtension:(NSString *)pathExtension
 {
-    NSString *fileExtension = [URL pathExtension];//[[URL componentsSeparatedByString:@"."] lastObject];
-    NSString *path = [self.cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%u.%@", URL.hash, fileExtension]];
+    NSString *path = [self.cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", Key, pathExtension]];
     if([self.fileManager fileExistsAtPath:path])
     {
         return [UIImage imageWithData:[NSData dataWithContentsOfFile:path]];
