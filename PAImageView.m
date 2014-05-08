@@ -257,7 +257,7 @@ NSString * const spm_identifier = @"spm.imagecache.tg";
                                               self.containerImageView.alpha       = 1.f;
                                           } completion:nil];
                      } completion:^(BOOL finished) {
-                         self.progressLayer.strokeColor = [self.progressColor CGColor];
+                         self.progressLayer.strokeColor = [self.backgroundProgresscolor CGColor];
                          [UIView animateWithDuration:duration
                                           animations:^{
                                               self.progressContainer.transform    = CGAffineTransformIdentity;
