@@ -180,6 +180,10 @@
             }
         } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
             NSLog(@"Image error: %@", error);
+            if (_placeHolderImage)
+            {
+                self.containerImageView.image = _placeHolderImage;
+            }
         }];
         [requestOperation start];
     }
@@ -213,6 +217,10 @@
             }
         } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
             NSLog(@"Image error: %@", error);
+            if (_placeHolderImage)
+            {
+                self.containerImageView.image = _placeHolderImage;
+            }
         }];
         [requestOperation start];
     }
