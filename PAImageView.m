@@ -72,7 +72,7 @@
     self.clipsToBounds          = YES;
     self.cacheEnabled               = YES;
     
-    self.cache = [[SPMImageCache alloc] init];
+    self.cache = [SPMImageCache sharedInstance];
     
     CGPoint arcCenter           = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
     CGFloat radius              = MIN(CGRectGetMidX(self.bounds) - 1, CGRectGetMidY(self.bounds)-1);
