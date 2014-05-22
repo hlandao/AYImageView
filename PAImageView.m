@@ -142,18 +142,7 @@
 
 - (void)setPlaceHolderImage:(UIImage *)placeHolderImage
 {
-    [self setPlaceHolderImage:placeHolderImage force:NO];
-}
-
-- (void)setPlaceHolderImage:(UIImage *)placeHolderImage force:(BOOL)force
-{
     _placeHolderImage = placeHolderImage;
-    
-    if (force)
-    {
-        self.containerImageView.image = placeHolderImage;
-        return;
-    }
     
     if (!self.containerImageView.image)
     {
@@ -163,6 +152,11 @@
 
 - (void)setImageURL:(NSURL *)imageURL cacheKey:(NSString *)key
 {
+    if (self.placeHolderImage)
+    {
+        [self.containerImageView setImage:self.placeHolderImage];
+    }
+    
     if (self.cacheEnabled)
     {
         __weak __typeof(self)weakSelf = self;
