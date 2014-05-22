@@ -163,40 +163,28 @@
 
 - (void)setImageURL:(NSURL *)imageURL cacheKey:(NSString *)key
 {
-    UIImage *cachedImage = (self.cacheEnabled) ? [self.cache imageFromDiskCacheForKey:key] : nil;
-    if(cachedImage)
+    if (self.cacheEnabled)
     {
-        [self updateWithImage:cachedImage animated:NO];
+        __weak __typeof(self)weakSelf = self;
+        [self.cache queryDiskCacheForKey:key
+                                    done:^(UIImage *cachedImage, SDImageCacheType cacheType) {
+                                        if(cachedImage)
+                                        {
+                                            dispatch_async(dispatch_get_main_queue(), ^{
+                                                [weakSelf updateWithImage:cachedImage animated:NO];
+                                            });
+                                        }
+                                        else
+                                        {
+                                            [weakSelf downloadImageWithUrl:imageURL
+                                                                  cacheKey:key];
+                                        }
+                                    }];
     }
     else
     {
-        __weak __typeof(self)weakSelf = self;
-        
-        [SDWebImageDownloader.sharedDownloader downloadImageWithURL:imageURL
-                                                            options:0
-                                                           progress:^(NSInteger receivedSize, NSInteger expectedSize)
-         {
-             // progression tracking code
-             CGFloat progress = (CGFloat)receivedSize/(CGFloat)expectedSize;
-             
-             self.progressLayer.strokeEnd        = progress;
-             self.backgroundLayer.strokeStart    = progress;
-         }
-                                                          completed:^(UIImage *image, NSData *data, NSError *error, BOOL finished)
-         {
-             if (image && finished)
-             {
-                 // do something with image
-                 dispatch_async(dispatch_get_main_queue(), ^{
-                     [weakSelf updateWithImage:image animated:YES];
-                 });
-                 
-                 if(self.cacheEnabled)
-                 {
-                     [self.cache storeImage:image forKey:key];
-                 }
-             }
-         }];
+        [self downloadImageWithUrl:imageURL
+                          cacheKey:key];
     }
 }
 
@@ -204,6 +192,36 @@
 {
     NSString *key = [imageURL absoluteString];
     [self setImageURL:imageURL cacheKey:key];
+}
+
+- (void)downloadImageWithUrl:(NSURL *)imageURL cacheKey:(NSString *)key
+{
+    __weak __typeof(self)weakSelf = self;
+    [SDWebImageDownloader.sharedDownloader downloadImageWithURL:imageURL
+                                                        options:0
+                                                       progress:^(NSInteger receivedSize, NSInteger expectedSize)
+     {
+         // progression tracking code
+         CGFloat progress = (CGFloat)receivedSize/(CGFloat)expectedSize;
+         
+         weakSelf.progressLayer.strokeEnd        = progress;
+         weakSelf.backgroundLayer.strokeStart    = progress;
+     }
+                                                      completed:^(UIImage *image, NSData *data, NSError *error, BOOL finished)
+     {
+         if (image && finished)
+         {
+             // do something with image
+             dispatch_async(dispatch_get_main_queue(), ^{
+                 [weakSelf updateWithImage:image animated:YES];
+             });
+             
+             if(weakSelf.cacheEnabled)
+             {
+                 [weakSelf.cache storeImage:image forKey:key];
+             }
+         }
+     }];
 }
 
 - (void)updateWithImage:(UIImage *)image animated:(BOOL)animated
