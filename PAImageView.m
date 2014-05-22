@@ -7,9 +7,8 @@
 //
 
 #import "PAImageView.h"
-#import "SPMImageCache.h"
-#import "AFNetworking.h"
-//#import "AFNetworking/AFNetworking.h"
+#import "SDWebImageDownloader.h"
+#import "SDImageCache.h"
 
 #pragma mark - Utils
 
@@ -23,7 +22,7 @@
 @property (nonatomic, strong, readwrite) UIImageView *containerImageView;
 @property (nonatomic, strong) UIView      *progressContainer;
 
-@property (nonatomic, strong) SPMImageCache *cache;
+@property (nonatomic, strong) SDImageCache *cache;
 
 @end
 
@@ -72,7 +71,7 @@
     self.clipsToBounds          = YES;
     self.cacheEnabled               = YES;
     
-    self.cache = [SPMImageCache sharedInstance];
+    self.cache = [SDImageCache sharedImageCache];
     
     CGPoint arcCenter           = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
     CGFloat radius              = MIN(CGRectGetMidX(self.bounds) - 1, CGRectGetMidY(self.bounds)-1);
@@ -143,19 +142,28 @@
 
 - (void)setPlaceHolderImage:(UIImage *)placeHolderImage
 {
+    [self setPlaceHolderImage:placeHolderImage force:NO];
+}
+
+- (void)setPlaceHolderImage:(UIImage *)placeHolderImage force:(BOOL)force
+{
     _placeHolderImage = placeHolderImage;
+    
+    if (force)
+    {
+        self.containerImageView.image = placeHolderImage;
+        return;
+    }
+    
     if (!self.containerImageView.image)
     {
         self.containerImageView.image = placeHolderImage;
     }
 }
 
-- (void)setImageURL:(NSURL *)URL cacheKey:(NSString *)key
+- (void)setImageURL:(NSURL *)imageURL cacheKey:(NSString *)key
 {
-    NSURLRequest *urlRequest = [NSURLRequest requestWithURL:URL];
-    NSString *fileExtension = [URL pathExtension];
-    UIImage *cachedImage = (self.cacheEnabled) ? [self.cache imageforKey:key
-                                                           pathExtension:fileExtension] : nil;
+    UIImage *cachedImage = (self.cacheEnabled) ? [self.cache imageFromDiskCacheForKey:key] : nil;
     if(cachedImage)
     {
         [self updateWithImage:cachedImage animated:NO];
@@ -163,67 +171,36 @@
     else
     {
         __weak __typeof(self)weakSelf = self;
-        AFHTTPRequestOperation *requestOperation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
-        requestOperation.responseSerializer = [AFImageResponseSerializer serializer];
-        [requestOperation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
-            CGFloat progress = (CGFloat)totalBytesRead/(CGFloat)totalBytesExpectedToRead;
-            
-            self.progressLayer.strokeEnd        = progress;
-            self.backgroundLayer.strokeStart    = progress;
-        }];
-        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
-            UIImage *image = responseObject;
-            [weakSelf updateWithImage:image animated:YES];
-            if(self.cacheEnabled)
-            {
-                [self.cache setImage:responseObject forKey:key pathExtension:fileExtension];
-            }
-        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-            NSLog(@"Image error: %@", error);
-            if (_placeHolderImage)
-            {
-                self.containerImageView.image = _placeHolderImage;
-            }
-        }];
-        [requestOperation start];
+        
+        [SDWebImageDownloader.sharedDownloader downloadImageWithURL:imageURL
+                                                            options:0
+                                                           progress:^(NSInteger receivedSize, NSInteger expectedSize)
+         {
+             // progression tracking code
+             CGFloat progress = (CGFloat)receivedSize/(CGFloat)expectedSize;
+             
+             self.progressLayer.strokeEnd        = progress;
+             self.backgroundLayer.strokeStart    = progress;
+         }
+                                                          completed:^(UIImage *image, NSData *data, NSError *error, BOOL finished)
+         {
+             if (image && finished)
+             {
+                 // do something with image
+                 [weakSelf updateWithImage:image animated:YES];
+                 if(self.cacheEnabled)
+                 {
+                     [self.cache storeImage:image forKey:key];
+                 }
+             }
+         }];
     }
 }
 
-- (void)setImageURL:(NSURL *)URL
+- (void)setImageURL:(NSURL *)imageURL
 {
-    NSURLRequest *urlRequest = [NSURLRequest requestWithURL:URL];
-    UIImage *cachedImage = (self.cacheEnabled) ? [self.cache imageForURL:URL] : nil;
-    if(cachedImage)
-    {
-        [self updateWithImage:cachedImage animated:NO];
-    }
-    else
-    {
-        __weak __typeof(self)weakSelf = self;
-        AFHTTPRequestOperation *requestOperation = [[AFHTTPRequestOperation alloc] initWithRequest:urlRequest];
-        requestOperation.responseSerializer = [AFImageResponseSerializer serializer];
-        [requestOperation setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
-            CGFloat progress = (CGFloat)totalBytesRead/(CGFloat)totalBytesExpectedToRead;
-            
-            self.progressLayer.strokeEnd        = progress;
-            self.backgroundLayer.strokeStart    = progress;
-        }];
-        [requestOperation setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
-            UIImage *image = responseObject;
-            [weakSelf updateWithImage:image animated:YES];
-            if(self.cacheEnabled)
-            {
-                [self.cache setImage:responseObject forURL:URL];
-            }
-        } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-            NSLog(@"Image error: %@", error);
-            if (_placeHolderImage)
-            {
-                self.containerImageView.image = _placeHolderImage;
-            }
-        }];
-        [requestOperation start];
-    }
+    NSString *key = [imageURL absoluteString];
+    [self setImageURL:imageURL cacheKey:key];
 }
 
 - (void)updateWithImage:(UIImage *)image animated:(BOOL)animated
