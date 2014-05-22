@@ -187,7 +187,10 @@
              if (image && finished)
              {
                  // do something with image
-                 [weakSelf updateWithImage:image animated:YES];
+                 dispatch_async(dispatch_get_main_queue(), ^{
+                     [weakSelf updateWithImage:image animated:YES];
+                 });
+                 
                  if(self.cacheEnabled)
                  {
                      [self.cache storeImage:image forKey:key];
