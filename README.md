@@ -7,7 +7,7 @@ Based on [Pierre Abi-aad](http://github.com/abiaad) project [PAImageView](https:
 
 ## Snapshot
 
-![Snapshop PASwitch](https://raw.github.com/abiaad/paimageview/master/snapshot.gif)
+![Snapshop PASwitch](https://raw.github.com/ayastrebov/ayimageview/master/snapshot.gif)
 
 ## Usage
 
