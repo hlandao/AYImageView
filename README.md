@@ -1,7 +1,9 @@
-# PAImageView
+# AYImageView
 ============
 
 **Rounded async imageview downloader based on SDWebImage**
+
+Based on [Pierre Abi-aad](http://github.com/abiaad) project [PAImageView](https://github.com/abiaad/PAImageView)
 
 ## Snapshot
 
@@ -10,7 +12,7 @@
 ## Usage
 
 ```objective-c
-PAImageView *avatarView = [[PAImageView alloc] initWithFrame:aFrame backgroundProgressColor:[UIColor whiteColor] progressColor:[UIColor lightGrayColor]];
+AYImageView *avatarView = [[AYImageView alloc] initWithFrame:aFrame backgroundProgressColor:[UIColor whiteColor] progressColor:[UIColor lightGrayColor]];
 [self.view addSubview:avatarView];
 // Later
 [avatarView setImageURL:URL];
@@ -23,6 +25,9 @@ PAImageView *avatarView = [[PAImageView alloc] initWithFrame:aFrame backgroundPr
 [Pierre Abi-aad](http://github.com/abiaad)
 [@abiaad](https://twitter.com/abiaad)
 
+[Andrey Yastrebov](http://github.com/ayastrebov)
+[@AndrewYastrebov](https://twitter.com/AndrewYastrebov)
+
 ## License
 
-PAImageView is available under the MIT license.
+AYImageView is available under the MIT license.

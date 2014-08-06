@@ -8,14 +8,14 @@
 
 #import <UIKit/UIKit.h>
 
-@protocol PAImageViewDelegate <NSObject>
+@protocol AYImageViewDelegate <NSObject>
 @optional
-- (void)paImageViewDidTapped:(id)view;
+- (void)ayImageViewDidTapped:(id)view;
 @end
 
-@interface PAImageView : UIView
+@interface AYImageView : UIView
 
-@property (nonatomic, weak) id<PAImageViewDelegate> delegate;
+@property (nonatomic, weak) id<AYImageViewDelegate> delegate;
 
 @property (nonatomic, assign, getter = isCacheEnabled) BOOL cacheEnabled;
 @property (nonatomic, strong) UIImage *placeHolderImage;

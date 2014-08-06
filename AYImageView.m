@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 Pierre Abi-aad. All rights reserved.
 //
 
-#import "PAImageView.h"
+#import "AYImageView.h"
 #import "SDWebImageDownloader.h"
 #import "SDImageCache.h"
 
@@ -15,7 +15,7 @@
 #define rad(degrees) ((degrees) / (180.0 / M_PI))
 #define kLineWidth 3.f
 
-@interface PAImageView ()
+@interface AYImageView ()
 
 @property (nonatomic, strong) CAShapeLayer *backgroundLayer;
 @property (nonatomic, strong) CAShapeLayer *progressLayer;
@@ -29,7 +29,7 @@
 #pragma mark - SPMImageAsyncView
 
 
-@implementation PAImageView
+@implementation AYImageView
 
 - (id)initWithCoder:(NSCoder *)aDecoder
 {
@@ -44,7 +44,7 @@
 
 - (id)initWithFrame:(CGRect)frame
 {
-    return [[PAImageView alloc] initWithFrame:frame
+    return [[AYImageView alloc] initWithFrame:frame
                       backgroundProgressColor:[UIColor whiteColor]
                                 progressColor:[UIColor blueColor]];
 }
@@ -122,9 +122,9 @@
 
 - (void)handleSingleTap:(id)sender
 {
-    if (self.delegate && [self.delegate respondsToSelector:@selector(paImageViewDidTapped:)])
+    if (self.delegate && [self.delegate respondsToSelector:@selector(ayImageViewDidTapped:)])
     {
-        [self.delegate paImageViewDidTapped:self];
+        [self.delegate ayImageViewDidTapped:self];
     }
 }
 
