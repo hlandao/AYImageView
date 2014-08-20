@@ -7,8 +7,9 @@
 //
 
 #import "AYImageView.h"
-#import "SDWebImageDownloader.h"
 #import "SDImageCache.h"
+#import "SDWebImageManager.h"
+#import "SDWebImageDownloader.h"
 
 #pragma mark - Utils
 
