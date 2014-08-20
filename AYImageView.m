@@ -22,7 +22,7 @@
 @property (nonatomic, strong, readwrite) UIImageView *containerImageView;
 @property (nonatomic, strong) UIView      *progressContainer;
 
-@property (nonatomic, strong) SDImageCache *cache;
+@property (nonatomic, strong) SDWebImageManager *imageManager;
 
 @end
 
@@ -71,7 +71,7 @@
     self.clipsToBounds          = YES;
     self.cacheEnabled               = YES;
     
-    self.cache = [SDImageCache sharedImageCache];
+    self.imageManager = [SDWebImageManager sharedManager];
     
     CGPoint arcCenter           = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
     CGFloat radius              = MIN(CGRectGetMidX(self.bounds) - 1, CGRectGetMidY(self.bounds)-1);
@@ -120,6 +120,14 @@
     [self addGestureRecognizer:tapRecognizer];
 }
 
+- (void)setHTTPHeaderValues:(NSDictionary *)header
+{
+    [header enumerateKeysAndObjectsUsingBlock:^(NSString *headerField, NSString *value, BOOL *stop) {
+        [self.imageManager.imageDownloader setValue:value
+                                 forHTTPHeaderField:headerField];
+    }];
+}
+
 - (void)handleSingleTap:(id)sender
 {
     if (self.delegate && [self.delegate respondsToSelector:@selector(ayImageViewDidTapped:)])
@@ -160,20 +168,20 @@
     if (self.cacheEnabled)
     {
         __weak __typeof(self)weakSelf = self;
-        [self.cache queryDiskCacheForKey:key
-                                    done:^(UIImage *cachedImage, SDImageCacheType cacheType) {
-                                        if(cachedImage)
-                                        {
-                                            dispatch_async(dispatch_get_main_queue(), ^{
-                                                [weakSelf updateWithImage:cachedImage animated:NO];
-                                            });
-                                        }
-                                        else
-                                        {
-                                            [weakSelf downloadImageWithUrl:imageURL
-                                                                  cacheKey:key];
-                                        }
-                                    }];
+        [self.imageManager.imageCache queryDiskCacheForKey:key
+                                                      done:^(UIImage *cachedImage, SDImageCacheType cacheType) {
+                                                        if(cachedImage)
+                                                        {
+                                                            dispatch_async(dispatch_get_main_queue(), ^{
+                                                                [weakSelf updateWithImage:cachedImage animated:NO];
+                                                            });
+                                                        }
+                                                        else
+                                                        {
+                                                            [weakSelf downloadImageWithUrl:imageURL
+                                                                                  cacheKey:key];
+                                                        }
+                                                    }];
     }
     else
     {
@@ -191,9 +199,9 @@
 - (void)downloadImageWithUrl:(NSURL *)imageURL cacheKey:(NSString *)key
 {
     __weak __typeof(self)weakSelf = self;
-    [SDWebImageDownloader.sharedDownloader downloadImageWithURL:imageURL
-                                                        options:0
-                                                       progress:^(NSInteger receivedSize, NSInteger expectedSize)
+    [self.imageManager downloadImageWithURL:imageURL
+                                    options:0
+                                   progress:^(NSInteger receivedSize, NSInteger expectedSize)
      {
          // progression tracking code
          CGFloat progress = (CGFloat)receivedSize/(CGFloat)expectedSize;
@@ -201,7 +209,7 @@
          weakSelf.progressLayer.strokeEnd        = progress;
          weakSelf.backgroundLayer.strokeStart    = progress;
      }
-                                                      completed:^(UIImage *image, NSData *data, NSError *error, BOOL finished)
+                                  completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL)
      {
          if (image && finished)
          {
@@ -212,7 +220,8 @@
              
              if(weakSelf.cacheEnabled)
              {
-                 [weakSelf.cache storeImage:image forKey:key];
+                 [weakSelf.imageManager.imageCache storeImage:image 
+                                                       forKey:key];
              }
          }
      }];

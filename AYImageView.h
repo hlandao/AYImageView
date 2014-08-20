@@ -28,5 +28,6 @@
 - (void)setImageURL:(NSURL *)imageURL;
 - (void)setImageURL:(NSURL *)imageURL cacheKey:(NSString *)key;
 - (void)setPlaceHolderImage:(UIImage *)placeHolderImage;
+- (void)setHTTPHeaderValues:(NSDictionary *)header;
 
 @end
