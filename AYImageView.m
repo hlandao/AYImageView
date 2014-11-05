@@ -22,7 +22,6 @@
 @property (nonatomic, strong) CAShapeLayer *progressLayer;
 @property (nonatomic, strong, readwrite) UIImageView *containerImageView;
 @property (nonatomic, strong) UIView      *progressContainer;
-@property (nonatomic, strong) NSString *cacheKey;
 @property (nonatomic, strong) SDWebImageManager *imageManager;
 
 @end
@@ -159,6 +158,49 @@
     }
 }
 
+
+
+- (void)loadImageURL:(NSURL *)imageURL completion:(AYImageViewCompletionBlock)completionBlock{
+    NSString *key = [imageURL absoluteString];
+    [self loadImageURL:imageURL cacheKey:key completion:completionBlock];
+}
+
+- (void)loadImageURL:(NSURL *)imageURL cacheKey:(NSString *)key completion:(AYImageViewCompletionBlock)completionBlock{
+    if (self.placeHolderImage)
+    {
+        [self.containerImageView setImage:self.placeHolderImage];
+    }
+    
+    if (self.cacheEnabled)
+    {
+        __weak __typeof(self)weakSelf = self;
+        [self.imageManager.imageCache queryDiskCacheForKey:key
+                                                      done:^(UIImage *cachedImage, SDImageCacheType cacheType) {
+                                                          
+                                                          
+                                                          
+                                                          if(cachedImage)
+                                                          {
+                                                              dispatch_async(dispatch_get_main_queue(), ^{
+                                                                  completionBlock(cachedImage, YES);
+                                                              });
+                                                          }
+                                                          else
+                                                          {
+                                                              [weakSelf downloadImageWithUrl:imageURL cacheKey:key completion:completionBlock];
+                                                          }
+                                                      }];
+    }
+    else
+    {
+        [self downloadImageWithUrl:imageURL
+                          cacheKey:key completion:completionBlock];
+    }
+
+}
+
+
+
 - (void)setImageURL:(NSURL *)imageURL cacheKey:(NSString *)key
 {
     if (self.placeHolderImage)
@@ -166,17 +208,16 @@
         [self.containerImageView setImage:self.placeHolderImage];
     }
     
-    self.cacheKey = key;
     if (self.cacheEnabled)
     {
         __weak __typeof(self)weakSelf = self;
         [self.imageManager.imageCache queryDiskCacheForKey:key
                                                       done:^(UIImage *cachedImage, SDImageCacheType cacheType) {
+                                                          
+                                                          
+
                                                         if(cachedImage)
                                                         {
-                                                            if(![key isEqualToString:weakSelf.cacheKey]){
-                                                                return;
-                                                            }
                                                             dispatch_async(dispatch_get_main_queue(), ^{
                                                                 [weakSelf updateWithImage:cachedImage animated:NO];
                                                             });
@@ -195,11 +236,48 @@
     }
 }
 
+
 - (void)setImageURL:(NSURL *)imageURL
 {
     NSString *key = [imageURL absoluteString];
     [self setImageURL:imageURL cacheKey:key];
 }
+
+- (void)downloadImageWithUrl:(NSURL *)imageURL cacheKey:(NSString *)key completion:(AYImageViewCompletionBlock) completionBlock
+{
+    __weak __typeof(self)weakSelf = self;
+    [self.imageManager downloadImageWithURL:imageURL
+                                    options:0
+                                   progress:^(NSInteger receivedSize, NSInteger expectedSize)
+     {
+         
+         
+         // progression tracking code
+         CGFloat progress = (CGFloat)receivedSize/(CGFloat)expectedSize;
+         
+         weakSelf.progressLayer.strokeEnd        = progress;
+         weakSelf.backgroundLayer.strokeStart    = progress;
+     }
+                                  completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL)
+     {
+         if (image && finished)
+         {
+             
+             // do something with image
+//             dispatch_async(dispatch_get_main_queue(), ^{
+//                 [weakSelf updateWithImage:image animated:YES];
+//             });
+             completionBlock(image, NO);
+             
+             if(weakSelf.cacheEnabled)
+             {
+                 [weakSelf.imageManager.imageCache storeImage:image
+                                                       forKey:key];
+             }
+         }
+     }];
+}
+
 
 - (void)downloadImageWithUrl:(NSURL *)imageURL cacheKey:(NSString *)key
 {
@@ -208,9 +286,7 @@
                                     options:0
                                    progress:^(NSInteger receivedSize, NSInteger expectedSize)
      {
-         if(![key isEqualToString:weakSelf.cacheKey]){
-             return;
-         }
+
 
          // progression tracking code
          CGFloat progress = (CGFloat)receivedSize/(CGFloat)expectedSize;
@@ -222,9 +298,7 @@
      {
          if (image && finished)
          {
-             if(![key isEqualToString:weakSelf.cacheKey]){
-                 return;
-             }
+
              // do something with image
              dispatch_async(dispatch_get_main_queue(), ^{
                  [weakSelf updateWithImage:image animated:YES];
@@ -248,6 +322,8 @@
     self.containerImageView.alpha       = 0.f;
     self.containerImageView.image       = image;
     
+
+
     [UIView animateWithDuration:duration
                      animations:^{
                          self.progressContainer.transform    = CGAffineTransformMakeScale(1.1, 1.1);
@@ -260,9 +336,11 @@
                                               self.containerImageView.alpha       = 1.f;
                                           } completion:nil];
                      } completion:^(BOOL finished) {
+
                          self.progressLayer.strokeColor = [self.backgroundProgresscolor CGColor];
                          [UIView animateWithDuration:duration
                                           animations:^{
+
                                               self.progressContainer.transform    = CGAffineTransformIdentity;
                                               self.progressContainer.alpha        = 1.f;
                                           }];
